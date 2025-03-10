@@ -2,7 +2,7 @@
   "name": "codeglance",
   "displayName": "codeglance",
   "description": "AI Powered code summarization and explanation",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "publisher": "HarshitGarg",
   "repository": {
     "type": "git",
