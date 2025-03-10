@@ -32,18 +32,16 @@
     ],
     "keybindings": [
       {
-        "command": "codeglance.showPopup",
-        "key": "cmd+shift+e",
-        "mac": "cmd+shift+e",
-        "when": "editorHasSelection"
-      }
-    ],
-    "keybindings": [
-      {
         "command": "codeglance.testAI",
         "key": "cmd+shift+t",
         "mac": "cmd+shift+t",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "codeglance.showPopup",
+        "key": "cmd+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "editorHasSelection"
       }
     ],
     "configuration": {
