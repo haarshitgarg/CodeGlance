@@ -17,7 +17,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('codeglance.helloWorld', () => {
+	let disposable = vscode.commands.registerCommand('codeglance.helloWorld', () => {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
 		vscode.window.showInformationMessage('Hello World from codeglance!');
@@ -60,7 +60,146 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	context.subscriptions.push(disposable, configureAICommand, testAICommand);
+	// Register command to explain selected code
+	let explainCodeCommand = vscode.commands.registerCommand('codeglance.showPopup', async () => {
+		const editor = vscode.window.activeTextEditor;
+		if (!editor) {
+			vscode.window.showInformationMessage('Please open a file first');
+			return;
+		}
+
+		const selection = editor.selection;
+		const selectedText = editor.document.getText(selection);
+		
+		if (!selectedText) {
+			vscode.window.showInformationMessage('Please select some code first');
+			return;
+		}
+
+		try {
+			const provider = LLMProviderFactory.getProvider();
+			
+			// Check if provider is configured
+			if (!await provider.isConfigured()) {
+				const configure = await vscode.window.showInformationMessage(
+					`${provider.name} is not configured. Would you like to configure it now?`,
+					'Yes', 'No'
+				);
+				
+				if (configure === 'Yes') {
+					await provider.configure();
+				} else {
+					return;
+				}
+			}
+
+			// Show loading message
+			const panel = vscode.window.createWebviewPanel(
+				'codeExplanation',
+				'Code Explanation',
+				vscode.ViewColumn.Beside,
+				{ enableScripts: true }
+			);
+
+			panel.webview.html = getLoadingContent();
+
+			// Get explanation from the LLM provider
+			const explanation = await provider.generateExplanation(selectedText);
+
+			// Update the webview with the explanation
+			panel.webview.html = getWebviewContent(selectedText, explanation);
+		} catch (error) {
+			vscode.window.showErrorMessage(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+		}
+	});
+
+	context.subscriptions.push(disposable, configureAICommand, testAICommand, explainCodeCommand);
+}
+
+function getLoadingContent() {
+	return `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Code Explanation</title>
+		<style>
+			body {
+				padding: 20px;
+				font-family: var(--vscode-editor-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif);
+				background-color: var(--vscode-editor-background);
+				color: var(--vscode-editor-foreground);
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				min-height: 200px;
+			}
+			.loading {
+				font-size: 1.2em;
+				color: var(--vscode-descriptionForeground);
+			}
+		</style>
+	</head>
+	<body>
+		<div class="loading">Getting explanation from ${LLMProviderFactory.getProvider().name}...</div>
+	</body>
+	</html>`;
+}
+
+function getWebviewContent(selectedText: string, explanation: string) {
+	return `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Code Explanation</title>
+		<style>
+			body {
+				padding: 20px;
+				font-family: var(--vscode-editor-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif);
+				background-color: var(--vscode-editor-background);
+				color: var(--vscode-editor-foreground);
+			}
+			h2 {
+				color: var(--vscode-titleBar-activeForeground);
+				border-bottom: 1px solid var(--vscode-titleBar-activeForeground);
+				padding-bottom: 5px;
+			}
+			.code-block {
+				background-color: var(--vscode-textCodeBlock-background);
+				color: var(--vscode-editor-foreground);
+				padding: 15px;
+				border-radius: 5px;
+				margin-bottom: 20px;
+				font-family: var(--vscode-editor-font-family, 'Courier New', Courier, monospace);
+				white-space: pre-wrap;
+				border: 1px solid var(--vscode-panel-border);
+			}
+			.explanation {
+				line-height: 1.6;
+				color: var(--vscode-editor-foreground);
+				background-color: var(--vscode-editor-background);
+				padding: 10px;
+				border-radius: 5px;
+			}
+		</style>
+	</head>
+	<body>
+		<h2>Selected Code</h2>
+		<div class="code-block">${escapeHtml(selectedText)}</div>
+		<h2>Explanation</h2>
+		<div class="explanation">${escapeHtml(explanation)}</div>
+	</body>
+	</html>`;
+}
+
+function escapeHtml(text: string): string {
+	return text
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#039;");
 }
 
 // This method is called when your extension is deactivated

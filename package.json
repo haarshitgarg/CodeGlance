@@ -24,6 +24,10 @@
       {
         "command": "codeglance.testAI",
         "title": "Test AI Configuration"
+      },
+      {
+        "command": "codeglance.showPopup",
+        "title": "Show Code Explanation"
       }
     ],
     "keybindings": [
@@ -32,6 +36,12 @@
         "key": "cmd+shift+t",
         "mac": "cmd+shift+t",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "codeglance.showPopup",
+        "key": "cmd+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "editorHasSelection"
       }
     ],
     "configuration": {
