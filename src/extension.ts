@@ -17,7 +17,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('codeglance.helloWorld', () => {
+	let disposable = vscode.commands.registerCommand('codeglance.helloWorld', () => {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
 		vscode.window.showInformationMessage('Hello World from codeglance!');
@@ -60,7 +60,81 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
-	context.subscriptions.push(disposable, configureAICommand, testAICommand);
+	// Register a command that shows a popup for selected text
+	let showPopupCommand = vscode.commands.registerCommand('codeglance.showPopup', () => {
+		// Get the active text editor
+		const editor = vscode.window.activeTextEditor;
+		
+		if (editor) {
+			const selection = editor.selection;
+			const selectedText = editor.document.getText(selection);
+			
+			if (selectedText) {
+				// Create and show a new webview panel
+				const panel = vscode.window.createWebviewPanel(
+					'codeExplanation', // Unique ID
+					'Code Explanation', // Title displayed in the tab
+					vscode.ViewColumn.Beside, // Show in a new column
+					{
+						enableScripts: true
+					}
+				);
+
+				// Set the HTML content
+				panel.webview.html = getWebviewContent(selectedText);
+			} else {
+				vscode.window.showInformationMessage('Please select some code first!');
+			}
+		}
+	});
+
+	context.subscriptions.push(disposable, showPopupCommand, configureAICommand, testAICommand);
+}
+
+function getWebviewContent(selectedText: string) {
+	return `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Code Explanation</title>
+		<style>
+			body {
+				padding: 20px;
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+			}
+			.code-block {
+				background-color: #f5f5f5;
+				padding: 15px;
+				border-radius: 5px;
+				margin-bottom: 20px;
+				font-family: 'Courier New', Courier, monospace;
+				white-space: pre-wrap;
+			}
+			.explanation {
+				line-height: 1.6;
+			}
+		</style>
+	</head>
+	<body>
+		<h2>Selected Code:</h2>
+		<div class="code-block">${escapeHtml(selectedText)}</div>
+		<h2>Explanation:</h2>
+		<div class="explanation">
+			This is a template explanation of the selected code. 
+			In future versions, this will be replaced with AI-generated explanations.
+		</div>
+	</body>
+	</html>`;
+}
+
+function escapeHtml(text: string): string {
+	return text
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#039;");
 }
 
 // This method is called when your extension is deactivated
