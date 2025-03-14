@@ -2,6 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { LLMProviderFactory } from './llm/provider-factory';
+import { CopilotProvider } from './llm/copilot-provider';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -14,6 +15,19 @@ export function activate(context: vscode.ExtensionContext) {
 	// Initialize the LLM provider factory with context
 	LLMProviderFactory.initialize(context);
 
+	// Add configuration change listener
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration(e => {
+			if (e.affectsConfiguration('codeglance.aiProvider')) {
+				const config = vscode.workspace.getConfiguration('codeglance');
+				const provider = config.get<string>('aiProvider');
+				console.log('AI Provider changed to:', provider);
+				// Force a new provider instance
+				LLMProviderFactory.getProvider(provider);
+			}
+		})
+	);
+
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
@@ -25,13 +39,19 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Register command to configure AI provider
 	let configureAICommand = vscode.commands.registerCommand('codeglance.configureAI', async () => {
-		const providers = ['OpenAI', 'Anthropic'];
+		const providers = ['OpenAI', 'Anthropic', 'Copilot'];
 		const selected = await vscode.window.showQuickPick(providers, {
 			placeHolder: 'Select AI Provider to configure'
 		});
 
 		if (selected) {
 			try {
+				// Update the configuration first
+				const config = vscode.workspace.getConfiguration('codeglance');
+				await config.update('aiProvider', selected.toLowerCase(), vscode.ConfigurationTarget.Global);
+				console.log('Updated aiProvider setting to:', selected.toLowerCase());
+
+				// Get the provider and configure it
 				const provider = LLMProviderFactory.getProvider(selected.toLowerCase());
 				await provider.configure();
 				vscode.window.showInformationMessage(`${selected} configured successfully!`);
@@ -93,7 +113,13 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 			}
 
-			// Show loading message
+			// Special handling for Copilot provider since it uses its own chat UI
+			if (provider.name === 'GitHub Copilot') {
+				await provider.generateExplanation(selectedText);
+				return;
+			}
+
+			// For other providers, show the explanation in our webview
 			const panel = vscode.window.createWebviewPanel(
 				'codeExplanation',
 				'Code Explanation',

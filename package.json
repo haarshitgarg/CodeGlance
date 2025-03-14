@@ -71,7 +71,8 @@
           "type": "string",
           "enum": [
             "openai",
-            "anthropic"
+            "anthropic",
+            "copilot"
           ],
           "default": "openai",
           "description": "Select the AI provider to use for code explanations"
@@ -93,6 +94,11 @@
           ],
           "default": "claude-3-sonnet-20240229",
           "description": "Select the Anthropic Claude model to use"
+        },
+        "codeglance.copilot.model": {
+          "type": "string",
+          "default": "copilot",
+          "description": "GitHub Copilot model to use"
         }
       }
     }
